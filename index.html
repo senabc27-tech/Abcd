@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Untuk Kamu — Sesuatu yang Spesial</title>
+<meta name="description" content="Sebuah pengakuan, dikemas dalam sebuah cerita.">
+
+<!-- =====================================================================
+     JARING PENGAMAN PALING AWAL — sengaja diletakkan sebelum resource
+     eksternal apa pun (font, CDN, dsb). Skrip inline sekecil ini tidak
+     bergantung pada apa pun, jadi selalu jalan walau font/CDN gagal,
+     lambat, atau diblokir oleh jaringan preview. Kalau dalam 6 detik
+     halaman masih di scene loading, ini akan MEMAKSA pindah ke scene
+     "Start" secara manual, terlepas dari apakah script.js berhasil
+     dimuat atau tidak.
+     ===================================================================== -->
+<script>
+  setTimeout(function () {
+    try {
+      var loading = document.getElementById('scene-loading');
+      if (!loading || !loading.classList.contains('is-active')) return; // sudah lanjut normal
+
+      if (typeof window.__confessionGoToScene === 'function') {
+        // script.js berhasil dimuat — pakai transisi resmi (lengkap dengan init bintang, dll)
+        window.__confessionGoToScene('scene-sky');
+      } else {
+        // script.js benar-benar gagal dimuat — pindah manual sebagai upaya terakhir
+        var sky = document.getElementById('scene-sky');
+        loading.classList.remove('is-active');
+        if (sky) sky.classList.add('is-active');
+      }
+    } catch (e) { /* diam saja — ini cuma jaring pengaman */ }
+  }, 6000);
+</script>
+
+<!-- ===== Google Fonts: Fraunces (display) + Quicksand (body) + Press Start 2P (pixel) =====
+     Dimuat secara async (trik media="print" -> "all") supaya TIDAK PERNAH
+     memblokir parsing halaman atau eksekusi script.js, walau koneksi ke
+     Google Fonts lambat atau gagal sekalipun. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Quicksand:wght@400;500;600;700&family=Press+Start+2P&display=swap"
+      media="print" onload="this.media='all'">
+<noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Quicksand:wght@400;500;600;700&family=Press+Start+2P&display=swap">
+</noscript>
+
+<!-- ===== Stylesheet lokal (aman, tidak bergantung jaringan luar) ===== -->
+<link rel="stylesheet" href="style.css">
+
+<!-- ===== CDN Libraries =====
+     PENTING: "async" (bukan "defer") supaya library ini TIDAK PERNAH
+     menahan urutan eksekusi script.js. Kalau CDN ini lambat/gagal
+     dimuat, script.js tetap jalan normal tanpa menunggu — semua
+     pemanggilan confetti() di script.js sudah dibungkus pengecekan
+     aman (typeof confetti !== 'function') jadi tidak akan error. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.2/confetti.browser.min.js" async></script>
+</head>
+<body>
+
+<!-- ============================================================
+     CURSOR EFFECT — kursor kustom berbentuk kilauan
+============================================================ -->
+<div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
+
+<!-- ============================================================
+     AUDIO SYSTEM
+     Ganti nama file musik-mu sendiri jadi music-intro.mp3 dan
+     music-happy.mp3, taruh SEJAJAR dengan index.html (folder yang sama,
+     tidak perlu bikin folder baru).
+     dengan file MP3 milikmu sendiri — nama file harus sama persis.
+============================================================ -->
+<audio id="bgMusic" loop preload="auto">
+  <source src="music-intro.mp3" type="audio/mpeg">
+</audio>
+
+<div class="audio-hint" id="audioHint">
+  <span>Klik play buton untuk nyalaim musik</span>
+  <span class="audio-hint-arrow">↓</span>
+</div>
+<div class="audio-toast" id="audioToast"></div>
+<div class="audio-player" id="audioPlayer" aria-label="Kontrol musik">
+  <button id="btnPlayPause" class="audio-btn audio-btn--highlight" title="Play / Pause" aria-label="Play atau Pause musik">
+    <svg id="iconPlay" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+    <svg id="iconPause" viewBox="0 0 24 24" width="16" height="16" style="display:none"><path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+  </button>
+  <div class="audio-wave" id="audioWave">
+    <span></span><span></span><span></span><span></span>
+  </div>
+  <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.01" value="0.5" aria-label="Volume musik">
+  <button id="btnMute" class="audio-btn" title="Mute / Unmute" aria-label="Mute atau unmute musik">
+    <svg id="iconVolume" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 10v4h4l5 5V5L7 10H3zm13.5 2A4.5 4.5 0 0 0 14 7.97v8.05A4.48 4.48 0 0 0 16.5 12z"/></svg>
+    <svg id="iconMuted" viewBox="0 0 24 24" width="16" height="16" style="display:none"><path fill="currentColor" d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.7 8.7 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4l-1.88 1.88L12 7.76V4z"/></svg>
+  </button>
+</div>
+
+<!-- ============================================================
+     SCENE 0 — LOADING SCREEN
+============================================================ -->
+<section id="scene-loading" class="scene scene-loading is-active">
+  <div class="loading-inner">
+    <svg class="loading-heart" viewBox="0 0 100 100" width="72" height="72">
+      <path id="loadingHeartPath" d="M50 88 C20 65 4 45 4 27 C4 12 16 2 30 2 C40 2 47 8 50 16 C53 8 60 2 70 2 C84 2 96 12 96 27 C96 45 80 65 50 88 Z" fill="none" stroke="url(#loadGrad)" stroke-width="3"/>
+      <defs>
+        <linearGradient id="loadGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ff8fc7"/>
+          <stop offset="100%" stop-color="#a78bfa"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div class="loading-bar-track">
+      <div class="loading-bar-fill" id="loadingBarFill"></div>
+    </div>
+    <p class="loading-text">loading........<span class="dots"><span>.</span><span>.</span><span>.</span></span></p>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCENE 1 — LANGIT MALAM / OPENING
+============================================================ -->
+<section id="scene-sky" class="scene scene-sky">
+  <canvas id="skyCanvas" class="sky-canvas"></canvas>
+  <div class="moon" id="moon"></div>
+  <div class="clouds" id="clouds"></div>
+
+  <div class="sky-content">
+    <p class="eyebrow">Buat kamu, yang lagi baca ini</p>
+    <h1 class="sky-title">Ada sesuatu yg mau aku ungkapin<br>di balik latar malam berbintang ini.</h1>
+    <button id="btnStart" class="btn-glass btn-start">
+      <span>Start</span>
+      <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+    </button>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCENE 2 — TYPING INTRO
+============================================================ -->
+<section id="scene-typing" class="scene scene-typing">
+  <div class="aurora-bg"></div>
+  <div class="particles-layer" id="particlesTyping"></div>
+  <div class="typing-content">
+    <p id="typingText" class="typing-text"></p>
+    <span class="typing-cursor" id="typingCursor">|</span>
+  </div>
+  <button id="btnSkipTyping" class="btn-ghost btn-skip">Lewati →</button>
+</section>
+
+<!-- ============================================================
+     SCENE 3 — MINI GAME: TANGKAP HATI
+============================================================ -->
+<section id="scene-game" class="scene scene-game">
+  <div class="aurora-bg aurora-bg--alt"></div>
+  <div class="game-hud">
+    <div class="game-score">
+      <span class="game-score-label"> tertangkap</span>
+      <span class="game-score-value"><span id="scoreCount">0</span>/<span id="scoreTarget">15</span></span>
+    </div>
+    <div class="game-progress-track">
+      <div class="game-progress-fill" id="gameProgressFill"></div>
+    </div>
+  </div>
+
+  <div class="game-intro" id="gameIntro">
+    <h2 class="game-title">yuu main dulu </h2>
+    <p class="game-subtitle">kumpulin 15 hati aku yang lagi berterbangan.</p>
+    <button id="btnGameStart" class="btn-glass">Mulai Permainan</button>
+  </div>
+
+  <div class="game-field" id="gameField" aria-hidden="true"></div>
+
+  <div class="game-complete" id="gameComplete">
+    <div class="game-complete-badge">✓</div>
+    <h2 class="game-title">Missi selesai</h2>
+    <p class="game-subtitle">selamat kamu berhasil ngumpulin semuanya. Sekarang, yuu lanjut dulu</p>
+    <button id="btnGameNext" class="btn-glass">Lanjut</button>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCENE 4 — SURAT CINTA DIGITAL
+============================================================ -->
+<section id="scene-letter" class="scene scene-letter">
+  <div class="aurora-bg"></div>
+  <div class="letter-stage">
+    <div class="envelope" id="envelope">
+      <div class="envelope-back"></div>
+      <div class="envelope-letter" id="envelopeLetterPaper">
+        <div class="letter-paper" id="letterPaper">
+          <p class="letter-greeting">Untuk Zahra,</p>
+          <p class="letter-body" id="letterBodyText">
+            Aku ga pinter ngerangkai kata romantis, jadi biarin tulisan ini ngewakilin semua perasaan yang selama ini aku pendam.
+            makasih karna udah mau maafin aku, aku mintamaaf karna dulu aku pernah nyakitin kamu, aku balik lagi karna menurut aku kamu adalah orang yang paling tulus ke aku, gaada alesan buat aku ga jatuh cinta sama kamu.
+          </p>
+          <p class="letter-signature">— dengan sepenuh hati
+          -Seno</p>
+        </div>
+      </div>
+      <div class="envelope-flap"></div>
+      <div class="envelope-front"></div>
+      <div class="envelope-seal" id="envelopeSeal">♥</div>
+    </div>
+    <p class="letter-hint" id="letterHint"> klik amplop nya</p>
+    <button id="btnLetterNext" class="btn-glass btn-fade-in" style="display:none">Lanjut</button>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCENE 5 — GALERI FOTO (POLAROID)
+============================================================ -->
+<section id="scene-gallery" class="scene scene-gallery">
+  <div class="aurora-bg aurora-bg--alt"></div>
+  <p class="eyebrow">sedikit potongan kenangan</p>
+  <h2 class="section-title">Momen yang diam-diam aku simpen</h2>
+
+
+  <div class="polaroid-grid" id="polaroidGrid">
+    <!-- Kartu polaroid di-generate oleh script.js agar mudah dikustomisasi -->
+  </div>
+
+  <button id="btnGalleryNext" class="btn-glass">Lanjut</button>
+</section>
+
+<!-- ============================================================
+     SCENE 6 — COUNTDOWN HARI BERSAMA
+============================================================ -->
+<section id="scene-countdown" class="scene scene-countdown">
+  <div class="aurora-bg"></div>
+  <div class="particles-layer" id="particlesCountdown"></div>
+  <p class="eyebrow"></p>
+  <div class="countdown-number-wrap">
+    <span class="countdown-number" id="countdownNumber">0</span>
+  </div>
+  <p class="countdown-caption">hari sejak pertamakali kita ketemu</p>
+
+  <!-- Ubah tanggal pertemuan di script.js pada variabel FIRST_MET_DATE -->
+  <p class="countdown-date" id="countdownDate"></p>
+
+  <button id="btnCountdownNext" class="btn-glass">Lanjut</button>
+</section>
+
+<!-- ============================================================
+     SCENE 8 — PENGAKUAN (KLIMAKS)
+============================================================ -->
+<section id="scene-confession" class="scene scene-confession">
+  <canvas id="confessionCanvas" class="sky-canvas"></canvas>
+  <div class="sakura-layer" id="sakuraLayer" aria-hidden="true"></div>
+
+  <div class="confession-content">
+    <div class="confession-lines" id="confessionLines">
+      <p data-line>Sebenernya...</p>
+      <p data-line>ada hal yang belum sempat aku bilang ke kamu.</p>
+      <p data-line>ada orang yang selama ini diem-diem pengen aku buat selalu tersenyum...</p>
+      <p data-line class="confession-highlight">dan orang itu adalah...., kamuu.</p>
+      <p data-line>Jadi, aku pengen nanya sesuatu.</p>
+    </div>
+
+    <div class="confession-question" id="confessionQuestion">
+      <h2 class="confession-title">kamu mau ga jadi pacar akuu lagii?</h2>
+
+      <div class="confession-buttons" id="confessionButtons">
+        <button id="btnYes" class="btn-yes">❤️ mauu!!!</button>
+        <button id="btnNo" class="btn-no" style="position:relative;">🤍 gaa!!!</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCENE 9 — CELEBRATION
+============================================================ -->
+<section id="scene-celebration" class="scene scene-celebration">
+  <div class="aurora-bg aurora-bg--celebrate"></div>
+  <div class="pixel-grid-overlay" aria-hidden="true"></div>
+  <div class="floating-hearts-layer" id="floatingHeartsLayer" aria-hidden="true"></div>
+
+  <div class="celebration-content">
+    <h1 class="celebration-title pixel-font" id="celebrationTitle">YEYYY!!! <span class="pixel-heart-icon" style="--phc:#ffd6ec"></span></h1>
+    <p class="celebration-sub">kalo suatu hari nanti kita berbeda pendapat, semoga kita lebih memilih saling mendengarkan daripada saling menyakiti, karna hubungan yang baik selalu di mulai dari komunikasi yang baik 🌼 🌼 🌼 🌼 🌼 🌼(anggep aja itu emoji bunga gerberas soalnya di keyboard gaada).</p>
+    <p class="celebration-date" id="celebrationDate"></p>
+    <button id="btnReplay" class="btn-ghost btn-pixel">klik untuk Putar ulang dari awal</button>
+  </div>
+</section>
+
+<script>
+/* =====================================================================
+   CONFESSION LOVE WEBSITE — script.js
+   Vanilla JS. Diorganisir per-scene agar mudah dimodifikasi.
+   ===================================================================== */
+
+(() => {
+  'use strict';
+
+  /* ===================================================================
+     0. KONFIGURASI — UBAH DI SINI SESUAI KEBUTUHANMU
+     =================================================================== */
+  const CONFIG = {
+    // Tanggal pertama kali bertemu (YYYY, MM(0-11), DD)
+    FIRST_MET_DATE: new Date(2025, 5, 9),
+
+    // Teks efek mengetik di Scene 2 (satu string per baris)
+    TYPING_LINES: [
+      'haii...',
+      'aku punya sesuatu buat kamuu.',
+      'tapi sebelum aku kasih tau mainin game ini dulu yaa...'
+    ],
+
+    // Target tangkapan hati di mini game
+    HEARTS_TARGET: 15,
+    GAME_DURATION_MS: 30000,
+
+    // Caption galeri foto (ganti sesuai cerita kalian, gambar tinggal ganti file)
+    GALLERY_ITEMS: [
+      { caption: '___________', icon: '💬' },
+      { caption: '___________', icon: '😄' },
+      { caption: '___________', icon: '🌇' },
+      { caption: '___________', icon: '🌙' },
+      { caption: '___________', icon: '✨' },
+      { caption: '___________', icon: '🤍' }
+    ],
+
+    // File musik — ganti isi file MP3-nya saja, nama harus sama
+    MUSIC_INTRO: 'music-intro.mp3',
+    MUSIC_HAPPY: 'music-happy.mp3'
+  };
+
+  /* ===================================================================
+     1. SCENE MANAGER
+     =================================================================== */
+  const SCENE_ORDER = [
+    'scene-loading', 'scene-sky', 'scene-typing', 'scene-game',
+    'scene-letter', 'scene-gallery', 'scene-countdown',
+    'scene-confession', 'scene-celebration'
+  ];
+
+  const sceneEls = {};
+  SCENE_ORDER.forEach(id => { sceneEls[id] = document.getElementById(id); });
+
+  let currentSceneId = 'scene-loading';
+
+  function goToScene(id) {
+    if (!sceneEls[id] || id === currentSceneId) return;
+    sceneEls[currentSceneId] && sceneEls[currentSceneId].classList.remove('is-active');
+    sceneEls[id].classList.add('is-active');
+    currentSceneId = id;
+    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+
+    // Panggil hook inisialisasi khusus scene (lazy, sekali jalan per kunjungan)
+    const hook = SCENE_INIT_HOOKS[id];
+    if (hook && !hook._done) { hook(); hook._done = true; }
+    if (SCENE_ENTER_HOOKS[id]) SCENE_ENTER_HOOKS[id]();
+  }
+
+  // Diekspos supaya jaring pengaman inline di <head> (yang jalan independen
+  // dari script.js) bisa memicu transisi scene yang "asli" — lengkap dengan
+  // init hooks-nya (bintang, dsb) — bukan cuma tukar class secara manual.
+  window.__confessionGoToScene = goToScene;
+
+  const SCENE_INIT_HOOKS = {};
+  const SCENE_ENTER_HOOKS = {};
+
+  /* ===================================================================
+     2. CURSOR GLOW
+     =================================================================== */
+  const cursorGlow = document.getElementById('cursorGlow');
+  if (cursorGlow) {
+    window.addEventListener('pointermove', (e) => {
+      cursorGlow.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+    }, { passive: true });
+
+    document.addEventListener('pointerover', (e) => {
+      if (e.target.closest('button, a, .envelope, .polaroid')) {
+        cursorGlow.classList.add('is-hover');
+      }
+    });
+    document.addEventListener('pointerout', (e) => {
+      if (e.target.closest('button, a, .envelope, .polaroid')) {
+        cursorGlow.classList.remove('is-hover');
+      }
+    });
+  }
+
+  /* ===================================================================
+     3. LOADING SCREEN
+     =================================================================== */
+  (function initLoading() {
+    const fill = document.getElementById('loadingBarFill');
+    let progress = 0;
+    let done = false;
+
+    function finishLoading() {
+      if (done) return;
+      done = true;
+      clearInterval(timer);
+      clearTimeout(safetyTimer);
+      if (fill) fill.style.width = '100%';
+      setTimeout(() => goToScene('scene-sky'), 400);
+    }
+
+    const timer = setInterval(() => {
+      progress += Math.random() * 18 + 6;
+      if (progress >= 100) {
+        progress = 100;
+        finishLoading();
+      }
+      if (fill) fill.style.width = progress + '%';
+    }, 260);
+
+    // Jaring pengaman: apa pun yang terjadi (lambat, aset gagal, dll),
+    // paksa lanjut dari loading screen paling lama 5 detik.
+    const safetyTimer = setTimeout(finishLoading, 5000);
+  })();
+
+  /* ===================================================================
+     4. SCENE 1 — SKY (stars, meteors, clouds)
+     =================================================================== */
+  SCENE_INIT_HOOKS['scene-sky'] = function initSky() {
+    const canvas = document.getElementById('skyCanvas');
+    const ctx = canvas.getContext('2d');
+    let w, h, stars = [], meteors = [];
+
+    function resize() {
+      w = canvas.width = canvas.offsetWidth;
+      h = canvas.height = canvas.offsetHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const STAR_COUNT = Math.min(140, Math.floor((window.innerWidth * window.innerHeight) / 9000));
+    for (let i = 0; i < STAR_COUNT; i++) {
+      stars.push({
+        x: Math.random() * w,
+        y: Math.random() * h * 0.85,
+        r: Math.random() * 1.4 + 0.3,
+        twinkleSpeed: Math.random() * 0.02 + 0.005,
+        twinklePhase: Math.random() * Math.PI * 2
+      });
+    }
+
+    function maybeSpawnMeteor() {
+      if (Math.random() < 0.006 && meteors.length < 2) {
+        const startX = Math.random() * w * 0.6 + w * 0.2;
+        meteors.push({ x: startX, y: -10, vx: 4.5, vy: 3, life: 1 });
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+      const t = Date.now() * 0.001;
+
+      stars.forEach(s => {
+        const twinkle = 0.5 + 0.5 * Math.sin(t * (s.twinkleSpeed * 60) + s.twinklePhase);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${0.35 + twinkle * 0.65})`;
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = 'rgba(255,255,255,0.8)';
+        ctx.fill();
+      });
+      ctx.shadowBlur = 0;
+
+      maybeSpawnMeteor();
+      meteors.forEach(m => {
+        ctx.beginPath();
+        const grad = ctx.createLinearGradient(m.x, m.y, m.x - m.vx * 12, m.y - m.vy * 12);
+        grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2;
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(m.x - m.vx * 12, m.y - m.vy * 12);
+        ctx.stroke();
+        m.x += m.vx; m.y += m.vy;
+      });
+      meteors = meteors.filter(m => m.x < w + 50 && m.y < h + 50);
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    // Clouds
+    const cloudsWrap = document.getElementById('clouds');
+    for (let i = 0; i < 4; i++) {
+      const cloud = document.createElement('div');
+      cloud.className = 'cloud';
+      const width = 140 + Math.random() * 160;
+      cloud.style.cssText = `
+        width:${width}px; height:${width * 0.4}px;
+        top:${10 + Math.random() * 50}%;
+        animation-duration:${50 + Math.random() * 40}s;
+        animation-delay:${-Math.random() * 40}s;
+      `;
+      cloudsWrap.appendChild(cloud);
+    }
+  };
+
+  document.getElementById('btnStart').addEventListener('click', () => {
+    startAudio();
+    goToScene('scene-typing');
+  });
+
+  /* ===================================================================
+     5. SCENE 2 — TYPING EFFECT
+     =================================================================== */
+  SCENE_ENTER_HOOKS['scene-typing'] = function runTyping() {
+    spawnParticles('particlesTyping', 26);
+    const textEl = document.getElementById('typingText');
+    const cursorEl = document.getElementById('typingCursor');
+    textEl.textContent = '';
+    let lineIndex = 0, charIndex = 0, cancelled = false;
+
+    function typeNextChar() {
+      if (cancelled) return;
+      const line = CONFIG.TYPING_LINES[lineIndex];
+      if (charIndex < line.length) {
+        textEl.textContent += line.charAt(charIndex);
+        charIndex++;
+        setTimeout(typeNextChar, 45 + Math.random() * 35);
+      } else {
+        lineIndex++;
+        if (lineIndex < CONFIG.TYPING_LINES.length) {
+          setTimeout(() => {
+            textEl.textContent = '';
+            charIndex = 0;
+            typeNextChar();
+          }, 900);
+        } else {
+          setTimeout(() => { if (!cancelled) goToScene('scene-game'); }, 1400);
+        }
+      }
+    }
+    typeNextChar();
+
+    document.getElementById('btnSkipTyping').onclick = () => {
+      cancelled = true;
+      goToScene('scene-game');
+    };
+  };
+
+  /* ===================================================================
+     6. SCENE 3 — MINI GAME: TANGKAP HATI
+     =================================================================== */
+  SCENE_ENTER_HOOKS['scene-game'] = function setupGame() {
+    document.getElementById('gameIntro').classList.remove('is-hidden');
+    document.getElementById('gameComplete').classList.remove('is-visible');
+    document.getElementById('gameField').classList.remove('is-active');
+    document.getElementById('scoreCount').textContent = '0';
+    document.getElementById('gameProgressFill').style.width = '0%';
+  };
+
+  const HEART_EMOJIS = ['💗', '💖', '💕', '❤️', '💘'];
+  let gameScore = 0;
+  let gameSpawnTimer = null;
+  let gameActive = false;
+
+  document.getElementById('btnGameStart').addEventListener('click', () => {
+    document.getElementById('gameIntro').classList.add('is-hidden');
+    document.getElementById('gameField').classList.add('is-active');
+    startHeartGame();
+  });
+
+  function startHeartGame() {
+    gameScore = 0;
+    gameActive = true;
+    const field = document.getElementById('gameField');
+    field.innerHTML = '';
+    updateGameHUD();
+
+    function spawnHeart() {
+      if (!gameActive || gameScore >= CONFIG.HEARTS_TARGET) return;
+      const heart = document.createElement('button');
+      heart.className = 'game-heart';
+      heart.type = 'button';
+      heart.setAttribute('aria-label', 'Tangkap hati');
+      heart.textContent = HEART_EMOJIS[Math.floor(Math.random() * HEART_EMOJIS.length)];
+
+      const margin = 8;
+      const x = margin + Math.random() * (100 - margin * 2);
+      const y = margin + Math.random() * (100 - margin * 2);
+      heart.style.left = x + '%';
+      heart.style.top = y + '%';
+
+      let caught = false;
+      const catchHeart = () => {
+        if (caught) return;
+        caught = true;
+        heart.classList.add('is-caught');
+        gameScore++;
+        updateGameHUD();
+        playSfx('catch');
+        setTimeout(() => heart.remove(), 400);
+        if (gameScore >= CONFIG.HEARTS_TARGET) finishGame();
+      };
+      heart.addEventListener('pointerdown', catchHeart);
+
+      field.appendChild(heart);
+
+      // Hati hilang otomatis jika tidak ditangkap dalam beberapa detik
+      setTimeout(() => { if (!caught) heart.remove(); }, 2600);
+    }
+
+    gameSpawnTimer = setInterval(spawnHeart, 550);
+    spawnHeart();
+  }
+
+  function updateGameHUD() {
+    document.getElementById('scoreCount').textContent = gameScore;
+    const pct = Math.min(100, (gameScore / CONFIG.HEARTS_TARGET) * 100);
+    document.getElementById('gameProgressFill').style.width = pct + '%';
+  }
+
+  function finishGame() {
+    gameActive = false;
+    clearInterval(gameSpawnTimer);
+    setTimeout(() => {
+      document.getElementById('gameField').classList.remove('is-active');
+      document.getElementById('gameComplete').classList.add('is-visible');
+      confettiBurst(0.25);
+    }, 500);
+  }
+
+  document.getElementById('btnGameNext').addEventListener('click', () => goToScene('scene-letter'));
+
+  /* ===================================================================
+     7. SCENE 4 — LETTER (envelope)
+     =================================================================== */
+  SCENE_INIT_HOOKS['scene-letter'] = function initLetter() {
+    const envelope = document.getElementById('envelope');
+    envelope.addEventListener('click', () => {
+      if (envelope.classList.contains('is-open')) return;
+      envelope.classList.add('is-open');
+      playSfx('open');
+      document.getElementById('letterHint').style.display = 'none';
+      setTimeout(() => {
+        document.getElementById('btnLetterNext').style.display = 'inline-flex';
+      }, 1000);
+    });
+  };
+
+  document.getElementById('btnLetterNext').addEventListener('click', () => goToScene('scene-gallery'));
+
+  /* ===================================================================
+     8. SCENE 5 — GALLERY (polaroid)
+     =================================================================== */
+  SCENE_INIT_HOOKS['scene-gallery'] = function initGallery() {
+    const grid = document.getElementById('polaroidGrid');
+    CONFIG.GALLERY_ITEMS.forEach((item, i) => {
+      const card = document.createElement('div');
+      card.className = 'polaroid';
+      card.style.setProperty('--rot', `${(i % 2 === 0 ? -1 : 1) * (3 + (i % 3) * 2)}deg`);
+      card.innerHTML = `
+        <div class="polaroid-photo">
+          <!-- Ganti src di bawah dengan foto kamu, contoh: assets/gallery/foto-${i + 1}.jpg
+               Kalau file-nya gagal ditemukan/dimuat, otomatis balik ke ikon placeholder
+               (lihat onerror) — supaya tidak muncul ikon "gambar rusak" yang jelek. -->
+          <img src="assets/gallery/foto-${i + 1}.jpg" alt=""
+               onerror="this.replaceWith(Object.assign(document.createElement('span'), {textContent: '${item.icon}'}))">
+        </div>
+        <span class="polaroid-caption">${item.caption}</span>
+      `;
+      grid.appendChild(card);
+    });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry, idx) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => entry.target.classList.add('is-visible'), idx * 90);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.2 });
+    grid.querySelectorAll('.polaroid').forEach(el => observer.observe(el));
+  };
+
+  document.getElementById('btnGalleryNext').addEventListener('click', () => goToScene('scene-countdown'));
+
+  /* ===================================================================
+     9. SCENE 6 — COUNTDOWN
+     =================================================================== */
+  SCENE_ENTER_HOOKS['scene-countdown'] = function runCountdown() {
+    spawnParticles('particlesCountdown', 20);
+    const days = Math.max(0, Math.floor((Date.now() - CONFIG.FIRST_MET_DATE.getTime()) / 86400000));
+    const numEl = document.getElementById('countdownNumber');
+    const dateEl = document.getElementById('countdownDate');
+
+    dateEl.textContent = 'sejak ' + CONFIG.FIRST_MET_DATE.toLocaleDateString('id-ID', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+    let current = 0;
+    const duration = 1600;
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      current = Math.floor(eased * days);
+      numEl.textContent = current.toLocaleString('id-ID');
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  };
+
+  document.getElementById('btnCountdownNext').addEventListener('click', () => goToScene('scene-confession'));
+
+  /* ===================================================================
+     11. SCENE 8 — CONFESSION (klimaks)
+     =================================================================== */
+  SCENE_INIT_HOOKS['scene-confession'] = function initConfessionSky() {
+    const canvas = document.getElementById('confessionCanvas');
+    const ctx = canvas.getContext('2d');
+    let w, h, stars = [];
+    function resize() { w = canvas.width = canvas.offsetWidth; h = canvas.height = canvas.offsetHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+    const COUNT = Math.min(160, Math.floor((window.innerWidth * window.innerHeight) / 8000));
+    for (let i = 0; i < COUNT; i++) {
+      stars.push({ x: Math.random() * w, y: Math.random() * h, r: Math.random() * 1.5 + 0.3, phase: Math.random() * Math.PI * 2 });
+    }
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+      const t = Date.now() * 0.001;
+      stars.forEach(s => {
+        const tw = 0.5 + 0.5 * Math.sin(t + s.phase);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${0.3 + tw * 0.7})`;
+        ctx.shadowBlur = 6; ctx.shadowColor = 'rgba(255,255,255,.8)';
+        ctx.fill();
+      });
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    // Kelopak sakura jatuh
+    const sakuraLayer = document.getElementById('sakuraLayer');
+    for (let i = 0; i < 22; i++) {
+      const petal = document.createElement('span');
+      petal.className = 'sakura';
+      petal.textContent = '🌸';
+      petal.style.left = Math.random() * 100 + '%';
+      petal.style.animationDuration = (8 + Math.random() * 10) + 's';
+      petal.style.animationDelay = (-Math.random() * 15) + 's';
+      petal.style.fontSize = (0.8 + Math.random() * 0.9) + 'rem';
+      sakuraLayer.appendChild(petal);
+    }
+  };
+
+  SCENE_ENTER_HOOKS['scene-confession'] = function runConfession() {
+    const lines = document.querySelectorAll('#confessionLines [data-line]');
+    const question = document.getElementById('confessionQuestion');
+    lines.forEach(l => l.classList.remove('is-visible'));
+    question.classList.remove('is-visible');
+
+    lines.forEach((line, i) => {
+      setTimeout(() => line.classList.add('is-visible'), 600 + i * 1300);
+    });
+    const totalDelay = 600 + lines.length * 1300 + 400;
+    setTimeout(() => question.classList.add('is-visible'), totalDelay);
+    setTimeout(initEvasiveNoButton, totalDelay + 200);
+  };
+
+  // Tombol "Tidak" yang kabur dari kursor / sentuhan
+  const NO_EMOJIS = ['🤍', '😳', '🙈', '😅', '🥺', '👀'];
+  let evasiveInitialized = false;
+
+  function initEvasiveNoButton() {
+    const btnNo = document.getElementById('btnNo');
+    const container = document.getElementById('confessionButtons');
+    if (evasiveInitialized) return;
+    evasiveInitialized = true;
+
+    let scale = 1;
+
+    function relocate() {
+      const cRect = container.getBoundingClientRect();
+      const sceneRect = document.getElementById('scene-confession').getBoundingClientRect();
+      const btnW = btnNo.offsetWidth || 120;
+      const btnH = btnNo.offsetHeight || 50;
+
+      const maxX = sceneRect.width - btnW - 24;
+      const maxY = sceneRect.height - btnH - 24;
+      const newX = Math.max(24, Math.random() * maxX);
+      const newY = Math.max(24, Math.random() * maxY);
+
+      scale = Math.max(0.55, scale - 0.05);
+      const rotate = (Math.random() - 0.5) * 60;
+
+      btnNo.style.position = 'fixed';
+      btnNo.style.left = newX + 'px';
+      btnNo.style.top = newY + 'px';
+      btnNo.style.transform = `rotate(${rotate}deg) scale(${scale})`;
+      btnNo.style.zIndex = '50';
+
+      if (Math.random() < 0.5) {
+        btnNo.textContent = NO_EMOJIS[Math.floor(Math.random() * NO_EMOJIS.length)];
+      } else {
+        btnNo.textContent = '🤍 Tidak';
+      }
+    }
+
+    function proximityCheck(clientX, clientY) {
+      const rect = btnNo.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dist = Math.hypot(clientX - cx, clientY - cy);
+      if (dist < 110) relocate();
+    }
+
+    document.addEventListener('pointermove', (e) => {
+      if (currentSceneId !== 'scene-confession') return;
+      proximityCheck(e.clientX, e.clientY);
+    }, { passive: true });
+
+    btnNo.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      relocate();
+    });
+    btnNo.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      relocate();
+    }, { passive: false });
+  }
+
+  document.getElementById('btnYes').addEventListener('click', () => {
+    playHappyMusic();
+    confettiBurst(1);
+    setTimeout(() => confettiFireworks(), 300);
+    goToScene('scene-celebration');
+  });
+
+  /* ===================================================================
+     12. SCENE 9 — CELEBRATION
+     =================================================================== */
+  SCENE_ENTER_HOOKS['scene-celebration'] = function runCelebration() {
+    document.getElementById('celebrationDate').textContent =
+      new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    startInfiniteHearts();
+    confettiBurst(0.6);
+  };
+
+  /* Hujan hati pixel — sepenuhnya digerakkan lewat requestAnimationFrame
+     (bukan CSS @keyframes + custom property) supaya kompatibel di semua
+     browser/WebView, termasuk yang lebih tua/terbatas. */
+  const PIXEL_HEART_COLORS = ['#ff8fc7', '#c7b6ff', '#ffd166', '#ffe1f0', '#a78bfa'];
+  const PIXEL_HEART_CELLS = [
+    [1,0],[2,0],[4,0],[5,0],
+    [0,1],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],
+    [0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],
+    [1,3],[2,3],[3,3],[4,3],[5,3],
+    [2,4],[3,4],[4,4],
+    [3,5]
+  ];
+
+  function pixelHeartSVG(color, sizePx) {
+    const rects = PIXEL_HEART_CELLS.map(([x, y]) => `<rect x="${x}" y="${y}" width="1" height="1"/>`).join('');
+    const h = Math.round(sizePx * 6 / 7);
+    return `<svg viewBox="0 0 7 6" width="${sizePx}" height="${h}" shape-rendering="crispEdges" fill="${color}" style="display:block">${rects}</svg>`;
+  }
+
+  let activeHearts = [];
+  let heartsLoopRunning = false;
+
+  function spawnFallingHeart(layer, prefilled) {
+    const el = document.createElement('div');
+    el.setAttribute('aria-hidden', 'true');
+    el.style.position = 'absolute';
+    el.style.top = '0';
+    el.style.left = (2 + Math.random() * 90) + '%';
+    el.style.pointerEvents = 'none';
+    el.style.opacity = '0';
+
+    const size = 12 + Math.random() * 24;
+    const color = PIXEL_HEART_COLORS[Math.floor(Math.random() * PIXEL_HEART_COLORS.length)];
+    el.innerHTML = pixelHeartSVG(color, size);
+    layer.appendChild(el);
+
+    const duration = 6000 + Math.random() * 6000;
+    const startOffset = prefilled ? Math.random() * duration : 0;
+
+    activeHearts.push({
+      el,
+      duration,
+      swayAmp: 10 + Math.random() * 24,
+      swayPhase: Math.random() * Math.PI * 2,
+      startTime: performance.now() - startOffset
+    });
+  }
+
+  function heartsTick(now) {
+    const layer = document.getElementById('floatingHeartsLayer');
+    if (!layer || currentSceneId !== 'scene-celebration') {
+      activeHearts.forEach(h => h.el.remove());
+      activeHearts = [];
+      heartsLoopRunning = false;
+      return;
+    }
+    const layerHeight = layer.clientHeight || window.innerHeight;
+
+    for (let i = activeHearts.length - 1; i >= 0; i--) {
+      const h = activeHearts[i];
+      const progress = (now - h.startTime) / h.duration;
+      if (progress >= 1) {
+        h.el.remove();
+        activeHearts.splice(i, 1);
+        continue;
+      }
+      const y = progress * (layerHeight + 60) - 30;
+      const sway = Math.sin(progress * Math.PI * 2 + h.swayPhase) * h.swayAmp;
+      let fade = 1;
+      if (progress < 0.08) fade = progress / 0.08;
+      else if (progress > 0.9) fade = (1 - progress) / 0.1;
+      h.el.style.transform = `translate(${sway.toFixed(1)}px, ${y.toFixed(1)}px)`;
+      h.el.style.opacity = (0.5 + fade * 0.4).toFixed(2);
+    }
+
+    // Terus tambah hati baru selama scene ini aktif, biar tetap ramai
+    if (Math.random() < 0.1) spawnFallingHeart(layer, false);
+
+    requestAnimationFrame(heartsTick);
+  }
+
+  function startInfiniteHearts() {
+    const layer = document.getElementById('floatingHeartsLayer');
+    if (!layer) return;
+    layer.innerHTML = '';
+    activeHearts = [];
+
+    // Isi awal supaya langsung terasa ramai begitu scene muncul
+    for (let i = 0; i < 22; i++) spawnFallingHeart(layer, true);
+
+    if (!heartsLoopRunning) {
+      heartsLoopRunning = true;
+      requestAnimationFrame(heartsTick);
+    }
+  }
+
+  document.getElementById('btnReplay').addEventListener('click', () => {
+    location.reload();
+  });
+
+  /* ===================================================================
+     13. HELPERS — PARTICLES
+     =================================================================== */
+  function spawnParticles(containerId, count) {
+    const el = document.getElementById(containerId);
+    if (!el || el.dataset.spawned) return;
+    el.dataset.spawned = 'true';
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('span');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.animationDuration = (8 + Math.random() * 10) + 's';
+      p.style.animationDelay = (-Math.random() * 14) + 's';
+      p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
+      p.style.color = Math.random() > 0.5 ? '#ff8fc7' : '#a78bfa';
+      el.appendChild(p);
+    }
+  }
+
+  /* ===================================================================
+     14. HELPERS — CONFETTI / FIREWORKS
+     =================================================================== */
+  function confettiBurst(strength = 1) {
+    if (typeof confetti !== 'function') return;
+    confetti({
+      particleCount: Math.floor(120 * strength),
+      spread: 90,
+      startVelocity: 45,
+      origin: { y: 0.6 },
+      colors: ['#ff8fc7', '#a78bfa', '#ffd166', '#ffffff']
+    });
+  }
+
+  function confettiFireworks() {
+    if (typeof confetti !== 'function') return;
+    const duration = 3500;
+    const end = Date.now() + duration;
+    (function frame() {
+      confetti({
+        particleCount: 4,
+        angle: 60,
+        spread: 60,
+        origin: { x: 0 },
+        colors: ['#ff8fc7', '#a78bfa', '#ffd166']
+      });
+      confetti({
+        particleCount: 4,
+        angle: 120,
+        spread: 60,
+        origin: { x: 1 },
+        colors: ['#ff8fc7', '#a78bfa', '#ffd166']
+      });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+
+    // Firework "letusan" acak di tengah atas
+    const fireworkTimer = setInterval(() => {
+      confetti({
+        particleCount: 60,
+        startVelocity: 30,
+        spread: 360,
+        origin: { x: Math.random(), y: Math.random() * 0.4 },
+        colors: ['#ff8fc7', '#a78bfa', '#ffd166', '#ffffff']
+      });
+    }, 500);
+    setTimeout(() => clearInterval(fireworkTimer), duration);
+  }
+
+  /* ===================================================================
+     15. HELPERS — SIMPLE SOUND EFFECTS (WebAudio, tanpa file eksternal)
+     =================================================================== */
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (e) { return null; }
+    }
+    return audioCtx;
+  }
+
+  function playSfx(type) {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+    if (type === 'catch') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(660, now);
+      osc.frequency.exponentialRampToValueAtTime(990, now + 0.12);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.start(now); osc.stop(now + 0.2);
+    } else if (type === 'open') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(520, now + 0.4);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc.start(now); osc.stop(now + 0.5);
+    }
+  }
+
+  /* ===================================================================
+     16. AUDIO PLAYER (musik latar, bisa diganti file MP3-nya)
+     =================================================================== */
+  const bgMusic = document.getElementById('bgMusic');
+  const audioPlayer = document.getElementById('audioPlayer');
+  const audioHint = document.getElementById('audioHint');
+  const audioToast = document.getElementById('audioToast');
+  const btnPlayPause = document.getElementById('btnPlayPause');
+  const btnMute = document.getElementById('btnMute');
+  const volumeSlider = document.getElementById('volumeSlider');
+  const audioWave = document.getElementById('audioWave');
+  const iconPlay = document.getElementById('iconPlay');
+  const iconPause = document.getElementById('iconPause');
+  const iconVolume = document.getElementById('iconVolume');
+  const iconMuted = document.getElementById('iconMuted');
+
+  bgMusic.volume = 0.5;
+  let hasPlayedOnce = false;
+  let toastTimer = null;
+
+  function showAudioToast(message) {
+    audioToast.textContent = message;
+    audioToast.classList.add('is-visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => audioToast.classList.remove('is-visible'), 4200);
+  }
+
+  function dismissAudioHint() {
+    audioHint.classList.remove('is-visible');
+    btnPlayPause.classList.remove('audio-btn--highlight');
+  }
+
+  function handlePlayFailure() {
+    setPlayingUI(false);
+    btnPlayPause.classList.remove('is-denied');
+    void btnPlayPause.offsetWidth; // reflow biar animasi bisa diulang
+    btnPlayPause.classList.add('is-denied');
+    // Kalau memang belum pernah berhasil main sama sekali, kemungkinan
+    // besar file MP3-nya memang belum ditaruh — kasih tahu jelas, jangan
+    // biarkan tombolnya terlihat "diam saja tidak merespons".
+    if (!hasPlayedOnce) {
+      showAudioToast('🎵 Belum ada file musik — taruh music-intro.mp3 SEJAJAR dengan index.html');
+    }
+  }
+
+  function startAudio() {
+    audioPlayer.classList.add('is-visible');
+    audioHint.classList.add('is-visible');
+    // Petunjuk otomatis hilang sendiri setelah beberapa detik kalau tidak disentuh
+    setTimeout(dismissAudioHint, 9000);
+    bgMusic.play().then(() => { hasPlayedOnce = true; setPlayingUI(true); }).catch(handlePlayFailure);
+  }
+
+  function playHappyMusic() {
+    const wasPlaying = !bgMusic.paused;
+    bgMusic.pause();
+    bgMusic.querySelector('source').src = CONFIG.MUSIC_HAPPY;
+    bgMusic.load();
+    if (wasPlaying) {
+      bgMusic.play().then(() => { hasPlayedOnce = true; setPlayingUI(true); }).catch(handlePlayFailure);
+    }
+  }
+
+  function setPlayingUI(isPlaying) {
+    iconPlay.style.display = isPlaying ? 'none' : 'block';
+    iconPause.style.display = isPlaying ? 'block' : 'none';
+    audioWave.classList.toggle('is-playing', isPlaying);
+  }
+
+  btnPlayPause.addEventListener('click', () => {
+    // Begitu ditekan (apa pun hasilnya), petunjuk "ketuk untuk nyalain" selesai tugasnya
+    dismissAudioHint();
+
+    if (bgMusic.paused) {
+      bgMusic.play().then(() => { hasPlayedOnce = true; setPlayingUI(true); }).catch(handlePlayFailure);
+    } else {
+      bgMusic.pause();
+      setPlayingUI(false);
+    }
+  });
+
+  btnMute.addEventListener('click', () => {
+    bgMusic.muted = !bgMusic.muted;
+    iconVolume.style.display = bgMusic.muted ? 'none' : 'block';
+    iconMuted.style.display = bgMusic.muted ? 'block' : 'none';
+  });
+
+  volumeSlider.addEventListener('input', (e) => {
+    bgMusic.volume = parseFloat(e.target.value);
+    if (bgMusic.volume === 0) {
+      bgMusic.muted = true;
+      iconVolume.style.display = 'none';
+      iconMuted.style.display = 'block';
+    } else if (bgMusic.muted) {
+      bgMusic.muted = false;
+      iconVolume.style.display = 'block';
+      iconMuted.style.display = 'none';
+    }
+  });
+
+  // Jika file musik belum diganti / gagal dimuat, jangan biarkan error mengganggu UX
+  bgMusic.addEventListener('error', () => {
+    console.warn('Musik tidak ditemukan. Taruh file MP3-mu sejajar dengan index.html sesuai nama di CONFIG.');
+    setPlayingUI(false);
+  });
+
+})();
+
+</script>
+</body>
+</html>
